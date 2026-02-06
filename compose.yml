@@ -20,6 +20,10 @@ services:
       DB_PASSWORD: secret
       CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
       CACHE_STORE: file
+      ELASTIC_APM_ENABLED: 'true'
+      ELASTIC_APM_SERVER_URL: 'http://apm-server:8200' 
+      ELASTIC_APM_SERVICE_NAME: 'Laravel-API-DDD'
+      ELASTIC_APM_TRANSACTION_SAMPLE_RATE: '1'
     depends_on:
       - db
     networks:
@@ -39,10 +43,76 @@ services:
       - dbdata:/var/lib/postgresql/data
     networks:
       - laravel-network
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false 
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - laravel-network
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - laravel-network
+
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:7.17.10
+    container_name: apm_server
+    command: >
+      apm-server -e
+        -E apm-server.host="0.0.0.0:8200"
+        -E apm-server.rum.enabled=true
+        -E apm-server.auth.anonymous.enabled=true
+        -E output.elasticsearch.hosts=["elasticsearch:9200"]
+        -E setup.kibana.host=kibana:5601
+        -E setup.template.enabled=true
+        -E setup.ilm.enabled=false
+    ports:
+      - "8200:8200"
+    depends_on:
+      - elasticsearch
+      - kibana
+    networks:
+      - laravel-network
+
+  kibana-setup:
+    image: curlimages/curl:latest
+    container_name: kibana_setup
+    depends_on:
+      - kibana
+    networks:
+      - laravel-network
+    restart: on-failure
+    entrypoint: >
+      /bin/sh -c "
+        echo 'Esperando a que Kibana responda...';
+        until curl -s http://kibana:5601/api/status | grep -q '\"level\":\"available\"'; do
+          sleep 5;
+        done;
+        echo 'Kibana listo. Creando Data View...';
+        curl -X POST 'http://kibana:5601/api/data_views/data_view' -H 'Content-Type: application/json' -H 'kbn-xsrf: true' -d '{\"data_view\": {\"title\": \"apm-*\", \"name\": \"Laravel APM\", \"timeFieldName\": \"@timestamp\"}}';
+        echo '\n✅ Configuración finalizada.';
+      "
 
 networks:
   laravel-network:
-    driver: bridge
 
 volumes:
   dbdata:
+  elastic_data:

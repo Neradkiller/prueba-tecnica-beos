@@ -118,3 +118,40 @@ La API está configurada para restringir el acceso a dominios específicos defin
 1. **Inmutabilidad:** El archivo docker-compose.yml no utiliza volumenes para montar el codigo en tiempo de ejecucion, garantizando que la imagen construida sea identica a la desplegada.
 2. **Strict Typing:** Se utiliza `declare(strict_types=1);` en las clases para asegurar la robustez del tipado.
 3. **Validacion de Negocio:** Se implementaron Actions para encapsular reglas complejas, como impedir la eliminacion de una divisa si existen productos cotizados en ella.
+
+## Monitoreo y Observabilidad (Elastic Stack)
+
+Este proyecto implementa una solución de monitoreo de grado empresarial utilizando **Elastic Stack (ELK)** para el rastreo de transacciones (APM), métricas de rendimiento y trazabilidad de errores en tiempo real.
+
+### Infraestructura de Observabilidad
+El stack se compone de los siguientes servicios integrados en el ecosistema Docker:
+* **Elasticsearch 8.11**: Motor de búsqueda y analítica donde se almacenan todos los datos de telemetría.
+* **Kibana 8.11**: Plataforma de visualización para explorar logs y gestionar el entorno.
+* **APM Server 7.17**: Actúa como puente entre la aplicación Laravel y Elasticsearch, procesando las trazas de rendimiento.
+* **Elastic APM PHP Agent**: Extensión instalada en el contenedor de la aplicación que captura automáticamente transacciones HTTP y consultas SQL.
+
+---
+
+### Acceso Rápido para Revisores
+El sistema está diseñado para ser **Plug & Play**. No es necesaria ninguna configuración manual en la interfaz de Kibana, ya que el proyecto incluye un contenedor de automatización (`kibana_setup`) que pre-configura el entorno al iniciar.
+
+1. **Levantar el entorno**: `docker compose up -d`
+2. **Acceder a Kibana**: [http://localhost:5601](http://localhost:5601)
+3. **Visualizar Datos**: 
+   * Ve a **Analytics > Discover** para ver el flujo de datos en tiempo real.
+   * Ve a **Observability > APM > Services** para ver el rendimiento del servicio **`Laravel-API`**.
+
+> [!IMPORTANT]
+> **Nota sobre el Tiempo**: Si al entrar no visualizas datos inmediatamente o aparece el mensaje "No results match", asegúrate de cambiar el rango de tiempo en la esquina superior derecha a **"Last 1 hour"** o **"Last 24 hours"**, ya que Kibana filtra por defecto los últimos 15 minutos y los datos previos podrían quedar fuera de vista.
+
+---
+
+### Generación de Tráfico de Prueba
+Para observar el comportamiento del sistema en vivo y poblar los dashboards, puedes ejecutar el siguiente comando desde tu terminal para generar una ráfaga de tráfico (exitoso y con errores):
+
+```bash
+# Envía 20 peticiones exitosas y 5 a una ruta inexistente para generar errores
+echo "Generando tráfico de prueba..."
+for i in {1..20}; do curl -s -o /dev/null "http://localhost/api/currencies"; done
+for i in {1..5}; do curl -s -o /dev/null "http://localhost/api/error-test-deos"; done
+echo "Tráfico enviado con éxito."
