@@ -152,6 +152,6 @@ Para observar el comportamiento del sistema en vivo y poblar los dashboards, pue
 ```bash
 # Envía 20 peticiones exitosas y 5 a una ruta inexistente para generar errores
 echo "Generando tráfico de prueba..."
-for i in {1..20}; do curl -s -o /dev/null "http://localhost/api/currencies"; done
-for i in {1..5}; do curl -s -o /dev/null "http://localhost/api/error-test-deos"; done
+for i in {1..20}; do curl -s -o /dev/null "http://localhost:8080/api/currencies"; done
+for i in {1..5}; do curl -s -o /dev/null "http://localhost:8080/api/error-test-deos"; done
 echo "Tráfico enviado con éxito."
