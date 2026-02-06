@@ -1,0 +1,262 @@
+openapi: 3.0.0
+info:
+  title: Prueba Backend API - Laravel 12
+  description: API RESTful para gestión de productos, divisas y precios.
+  version: 1.0.0
+servers:
+  - url: http://localhost/api
+    description: Servidor Local
+paths:
+  # --- PRODUCTOS ---
+  /products:
+    get:
+      tags: [Productos]
+      summary: Listar productos
+      description: Obtiene una lista paginada de productos con sus precios. Permite búsqueda.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Buscar por nombre o descripción.
+      responses:
+        '200':
+          description: Lista obtenida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPagination'
+    post:
+      tags: [Productos]
+      summary: Crear producto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResource'
+
+  /products/{id}:
+    parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+    get:
+      tags: [Productos]
+      summary: Obtener producto
+      responses:
+        '200':
+          description: Detalle del producto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResource'
+    put:
+      tags: [Productos]
+      summary: Actualizar producto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: Actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResource'
+    delete:
+      tags: [Productos]
+      summary: Eliminar producto
+      responses:
+        '200':
+          description: Eliminado.
+
+  /products/{id}/prices:
+    post:
+      tags: [Productos]
+      summary: Agregar precio en otra divisa
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currency_id
+                - price
+              properties:
+                currency_id:
+                  type: integer
+                price:
+                  type: number
+                  format: float
+      responses:
+        '201':
+          description: Precio registrado.
+
+  # --- DIVISAS ---
+  /currencies:
+    get:
+      tags: [Divisas]
+      summary: Listar divisas
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Buscar por nombre o símbolo.
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Lista de divisas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyPagination'
+    post:
+      tags: [Divisas]
+      summary: Crear divisa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurrencyInput'
+      responses:
+        '201':
+          description: Divisa creada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyResource'
+
+  /currencies/{id}:
+    parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+    get:
+      tags: [Divisas]
+      summary: Ver divisa
+      responses:
+        '200':
+          description: Detalle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyResource'
+    put:
+      tags: [Divisas]
+      summary: Actualizar divisa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurrencyInput'
+      responses:
+        '200':
+          description: Actualizada.
+    delete:
+      tags: [Divisas]
+      summary: Eliminar divisa
+      responses:
+        '200':
+          description: Eliminada.
+
+components:
+  schemas:
+    # Schemas de Producto
+    ProductInput:
+      type: object
+      required: [name, description, price, currency_id, tax_cost, manufacturing_cost]
+      properties:
+        name: { type: string, example: "Laptop" }
+        description: { type: string, example: "Alta gama" }
+        price: { type: number, format: float, example: 1000.00 }
+        currency_id: { type: integer, example: 1 }
+        tax_cost: { type: number, format: float, example: 100.00 }
+        manufacturing_cost: { type: number, format: float, example: 500.00 }
+    
+    ProductResource:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            prices: { type: array, items: { type: object } }
+
+    ProductPagination:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ProductResource' } }
+        meta: { type: object }
+        links: { type: object }
+
+    # Schemas de Divisa
+    CurrencyInput:
+      type: object
+      required: [name, symbol, exchange_rate]
+      properties:
+        name: { type: string, example: "Euro" }
+        symbol: { type: string, example: "€" }
+        exchange_rate: { type: number, format: float, example: 0.85 }
+
+    CurrencyResource:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            symbol: { type: string }
+            exchange_rate: { type: number }
+
+    CurrencyPagination:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/CurrencyResource' } }
+        meta: { type: object }
+        links: { type: object }
